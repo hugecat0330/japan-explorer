@@ -3,34 +3,10 @@ import {
   Map, Calendar, CloudSun, MapPin, 
   ChevronRight, Plus, Trash2, Sun, Cloud, 
   CloudRain, Snowflake, Wind, Navigation, Sparkles, CheckCircle, Search, Filter, ImageOff,
-  Utensils, Castle, Trees, Camera, ShoppingBag, Droplets, Info, X, FileDown, Save, ChevronDown, Loader2
+  Utensils, Castle, Trees, Camera, ShoppingBag, Droplets, Info, X, FileDown, Save, ChevronDown
 } from 'lucide-react';
 
-// --- Gemini API 核心設定 ---
-const apiKey = ""; // 執行環境將自動注入 Key
-
-const fetchGemini = async (prompt) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    systemInstruction: { parts: [{ text: "你是一位精通日本旅遊的專業規劃導師。你的回答必須簡潔、友善、富有吸引力，且使用繁體中文。請針對使用者的行程或天氣提供具體的建議。" }] }
-  };
-  const retryWithBackoff = async (fn, retries = 5, delay = 1000) => {
-    try { return await fn(); } catch (err) {
-      if (retries <= 0) throw err;
-      await new Promise(res => setTimeout(res, delay));
-      return retryWithBackoff(fn, retries - 1, delay * 2);
-    }
-  };
-  return retryWithBackoff(async () => {
-    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!response.ok) throw new Error('API call failed');
-    const result = await response.json();
-    return result.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，我現在無法生成建議。";
-  });
-};
-
-// --- 景點資料庫 ---
+// --- 景點資料庫 (套用您提供的最新穩定免費 ID) ---
 const ATTRACTIONS = [
   { id: 'a1', name: '淺草寺 雷門', area: '東京', type: '文化', img: 'https://images.unsplash.com/photo-1673187100526-09961b6636a7?q=80&w=800&auto=format&fit=crop' },
   { id: 'a2', name: '伏見稻荷大社', area: '京都', type: '文化', img: 'https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?q=80&w=800&auto=format&fit=crop' },
@@ -40,15 +16,14 @@ const ATTRACTIONS = [
   { id: 'a6', name: '奈良公園 小鹿', area: '奈良', type: '體驗', img: 'https://images.unsplash.com/photo-1726737699208-bee1475d3a3f?q=80&w=800&auto=format&fit=crop' },
   { id: 'a7', name: '築地場外市場', area: '東京', type: '美食', img: 'https://images.unsplash.com/photo-1590582917892-a6e11d1b32bc?q=80&w=800&auto=format&fit=crop' },
   { id: 'a8', name: '東京晴空塔', area: '東京', type: '體驗', img: 'https://images.unsplash.com/photo-1650201885448-a04bc6bb4319?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a9', name: '金閣寺', area: '京都', type: '文化', img: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a10', name: '心齋橋商店街', area: '大阪', type: '購物', img: 'https://images.unsplash.com/photo-1621640100416-6ca78546b306?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a11', name: '嵐山 竹林小徑', area: '京都', type: '自然', img: 'https://images.unsplash.com/photo-1510134882522-861074e2777f?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a12', name: '東京鐵塔', area: '東京', type: '文化', img: 'https://images.unsplash.com/photo-1513407030348-c983a97b98d8?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a13', name: '新宿御苑', area: '東京', type: '自然', img: 'https://images.unsplash.com/photo-1582294152504-209214798a72?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a14', name: '大阪城公園', area: '大阪', type: '文化', img: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a15', name: '銀座 購物區', area: '東京', type: '購物', img: 'https://images.unsplash.com/photo-1586940866943-7f287383a152?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a16', name: '橫濱 未來港', area: '神奈川', type: '體驗', img: 'https://images.unsplash.com/photo-1555529324-da1794990391?q=80&w=800&auto=format&fit=crop' },
-  { id: 'a20', name: '明治神宮', area: '東京', type: '文化', img: 'https://images.unsplash.com/photo-1608316104867-628d098e7276?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a9', name: '金閣寺', area: '京都', type: '文化', img: 'https://images.unsplash.com/photo-1653997412308-308d945f687b?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a10', name: '心齋橋筋商店街', area: '大阪', type: '購物', img: 'https://images.unsplash.com/photo-1555063384-5d50f40db6da?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a11', name: '嵐山 竹林', area: '京都', type: '自然', img: 'https://images.unsplash.com/photo-1702564492961-3643703480c2?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a13', name: '新宿御苑', area: '東京', type: '自然', img: 'https://images.unsplash.com/photo-1532188978303-4bfaccc429d2?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a14', name: '大阪城公園', area: '大阪', type: '文化', img: 'https://images.unsplash.com/photo-1713346643785-81e13b205709?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a15', name: '銀座 購物區', area: '東京', type: '購物', img: 'https://images.unsplash.com/photo-1622767833293-8d1e6878c27f?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a16', name: '橫濱未來港', area: '神奈川', type: '體驗', img: 'https://images.unsplash.com/photo-1546126301-a4a6a185d2a2?q=80&w=800&auto=format&fit=crop' },
+  { id: 'a20', name: '明治神宮', area: '東京', type: '文化', img: 'https://images.unsplash.com/photo-1703443371292-0d9081cc4787?q=80&w=800&auto=format&fit=crop' },
 ];
 
 const FLOWER_SEASONS = [
@@ -59,11 +34,11 @@ const FLOWER_SEASONS = [
 ];
 
 const MOCK_WEATHER = [
-  { city: '東京', temp: 18, condition: '晴朗', icon: Sun, humidity: 45, wind: '5 km/h', tip: '氣候宜人，建議穿著薄長袖搭配薄外套。' },
-  { city: '京都', temp: 16, condition: '多雲', icon: CloudSun, humidity: 55, wind: '3 km/h', tip: '古都早晚溫差大，記得洋蔥式穿法。' },
-  { city: '大阪', temp: 19, condition: '陰天', icon: Cloud, humidity: 60, wind: '8 km/h', tip: '適合美食散策，建議攜帶輕便雨具備用。' },
-  { city: '札幌', temp: 5, condition: '小雪', icon: Snowflake, humidity: 80, wind: '12 km/h', tip: '積雪路滑，請穿著防滑靴與保暖大衣。' },
-  { city: '福岡', temp: 20, condition: '小雨', icon: CloudRain, humidity: 75, wind: '10 km/h', tip: '空氣濕度高，出門記得帶把傘。' },
+  { city: '東京', temp: 18, condition: '晴朗', icon: Sun, humidity: 45, wind: '5 km/h', tip: '氣候宜人，建議穿著薄長袖搭配薄外套，銀座步行最為舒適。' },
+  { city: '京都', temp: 16, condition: '多雲', icon: CloudSun, humidity: 55, wind: '3 km/h', tip: '古都早晚溫差大，記得洋蔥式穿法，適合在嵐山慢行。' },
+  { city: '大阪', temp: 19, condition: '陰天', icon: Cloud, humidity: 60, wind: '8 km/h', tip: '適合美食散策，心齋橋購物即便微陰也充滿活力。' },
+  { city: '札幌', temp: 5, condition: '小雪', icon: Snowflake, humidity: 80, wind: '12 km/h', tip: '積雪路滑，請穿著防滑靴與保暖大衣，體驗冬之魅力。' },
+  { city: '福岡', temp: 20, condition: '小雨', icon: CloudRain, humidity: 75, wind: '10 km/h', tip: '空氣濕度高，出門記得帶把傘，室內購物是好選擇。' },
 ];
 
 const CATEGORIES = ['全部', '美食', '文化', '自然', '體驗', '購物'];
@@ -119,13 +94,13 @@ const Header = ({ activeTab, setActiveTab }) => (
 );
 
 const HomeSection = ({ setActiveTab }) => (
-  <div className="flex flex-col flex-grow animate-fade-in relative min-h-[calc(100vh-4rem)] overflow-hidden">
+  <div className="flex flex-col flex-grow animate-fade-in relative min-h-[calc(100vh-4rem)] overflow-hidden text-left">
     <div className="absolute inset-0 w-full h-full">
       <ImageWithFallback src="https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=2000&auto=format&fit=crop" alt="Japan Immersion" type="自然" className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80"></div>
     </div>
     
-    <div className="relative flex-grow flex flex-col justify-end p-6 md:p-16 lg:pb-32 z-10 text-left">
+    <div className="relative flex-grow flex flex-col justify-end p-6 md:p-16 lg:pb-32 z-10">
       <div className="max-w-6xl mx-auto w-full animate-fade-in">
         <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 bg-rose-500 text-white rounded-full text-[10px] font-black tracking-widest uppercase shadow-lg">
           <Sparkles className="w-3 h-3" /> 2026 Japan Edition
@@ -165,7 +140,7 @@ const SeasonsSection = () => (
   <div className="max-w-6xl mx-auto px-4 py-20 animate-fade-in text-left">
     <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-8 px-4">
       <h2 className="text-6xl font-black text-slate-900 leading-tight tracking-tighter">2026 <br />四季花卉曆</h2>
-      <p className="text-slate-400 text-lg md:text-xl font-medium border-l-[6px] border-rose-500 pl-8 leading-relaxed max-w-md">
+      <p className="text-slate-400 text-lg md:text-xl font-medium border-l-[6px] border-rose-500 pl-8 leading-relaxed max-w-md text-left">
         日本的靈魂在於季節的流轉。我們為您精選了 2026 最具代表性的色彩。
       </p>
     </div>
@@ -175,13 +150,13 @@ const SeasonsSection = () => (
           <div className="w-full md:w-[60%] rounded-[4rem] overflow-hidden shadow-2xl h-[450px]">
             <ImageWithFallback src={s.imgUrl} alt={s.name} type="自然" className="w-full h-full object-cover transition-transform hover:scale-105 duration-1000" />
           </div>
-          <div className="w-full md:w-[40%] space-y-6">
+          <div className="w-full md:w-[40%] space-y-6 text-left">
             <span className={`px-5 py-2 rounded-full text-[10px] font-black tracking-widest uppercase ${s.color} shadow-sm inline-block`}>
               {s.season} • {s.period}
             </span>
             <h3 className="text-6xl font-black text-slate-900 tracking-tighter">{s.name}</h3>
             <p className="text-slate-500 text-xl leading-relaxed font-medium">{s.description}</p>
-            <div className="pt-4 flex flex-wrap gap-2">
+            <div className="pt-4 flex flex-wrap gap-2 justify-start">
               {s.locations.map(l => <span key={l} className="bg-white border border-slate-100 shadow-sm px-4 py-2 rounded-2xl text-xs font-bold text-slate-600">📍 {l}</span>)}
             </div>
           </div>
@@ -194,8 +169,6 @@ const SeasonsSection = () => (
 const WeatherSection = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeCity, setActiveCity] = useState(null);
-  const [aiTip, setAiTip] = useState("");
-  const [loadingAi, setLoadingAi] = useState(false);
 
   const dynamicWeather = useMemo(() => {
     let hash = 0;
@@ -203,28 +176,13 @@ const WeatherSection = () => {
     return MOCK_WEATHER.map((w, idx) => ({ ...w, temp: w.temp + (Math.abs(hash + idx) % 5 - 2) }));
   }, [selectedDate]);
 
-  const handleCityClick = async (city) => {
-    setActiveCity(city);
-    setAiTip("");
-    setLoadingAi(true);
-    const prompt = `針對 2026 年 ${selectedDate} 在 ${city.city} 的天氣情況（氣溫 ${city.temp}度，狀態為 ${city.condition}），請以時尚穿搭達人的角度，提供三句簡潔的穿衣與旅遊建議。`;
-    try {
-      const result = await fetchGemini(prompt);
-      setAiTip(result);
-    } catch {
-      setAiTip("無法獲取 AI 建議。");
-    } finally {
-      setLoadingAi(false);
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-16 animate-fade-in text-left">
       <div className="relative overflow-hidden rounded-[3rem] bg-slate-900 p-8 md:p-14 mb-14 shadow-3xl text-left">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-10">
           <div>
             <h2 className="text-5xl font-black text-white mb-3 tracking-tight">氣候觀測站</h2>
-            <p className="text-slate-400 text-xl font-medium">日本 2026 即時預報與 ✨ AI 達人穿搭建議</p>
+            <p className="text-slate-400 text-xl font-medium">日本 2026 各大城市即時預報與穿著建議</p>
           </div>
           <div className="bg-white/5 backdrop-blur-3xl border border-white/10 p-2 rounded-[2rem] flex items-center shadow-2xl">
             <div className="px-8 py-3 flex flex-col">
@@ -237,8 +195,8 @@ const WeatherSection = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
         {dynamicWeather.map(w => (
-          <div key={w.city} onClick={() => handleCityClick(w)} className="bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm hover:shadow-2xl transition-all cursor-pointer group hover:-translate-y-2">
-            <div className="flex justify-between items-start mb-8 text-left">
+          <div key={w.city} onClick={() => setActiveCity(w)} className="bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm hover:shadow-2xl transition-all cursor-pointer group hover:-translate-y-2 text-left">
+            <div className="flex justify-between items-start mb-8">
               <span className="font-black text-3xl text-slate-800 tracking-tighter">{w.city}</span>
               <w.icon className={`w-12 h-12 ${w.condition === '晴朗' ? 'text-yellow-400' : 'text-blue-300'}`} />
             </div>
@@ -259,13 +217,9 @@ const WeatherSection = () => {
             <p className="text-rose-500 font-black text-2xl mb-10 uppercase">{activeCity.condition} // Forecast</p>
             <div className="bg-slate-50 p-8 rounded-[3rem] mb-10 border border-slate-100">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-rose-500" /> ✨ AI 穿搭達人建議
+                <Sparkles className="w-5 h-5 text-rose-500" /> 達人穿搭建議
               </h4>
-              {loadingAi ? (
-                <div className="flex items-center gap-2 py-4 text-slate-400"><Loader2 className="animate-spin w-4 h-4" /> 分析天氣中...</div>
-              ) : (
-                <p className="text-slate-700 text-lg leading-relaxed font-bold italic">{aiTip || activeCity.tip}</p>
-              )}
+              <p className="text-slate-700 text-lg leading-relaxed font-bold italic">{activeCity.tip}</p>
             </div>
             <button onClick={() => setActiveCity(null)} className="w-full py-6 bg-slate-900 text-white font-black rounded-3xl text-xl hover:bg-rose-600 transition-colors">了解了</button>
           </div>
@@ -286,8 +240,6 @@ const ItinerarySection = () => {
   const [filterValue, setFilterValue] = useState('全部');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [aiOptimization, setAiOptimization] = useState("");
-  const [optimizing, setOptimizing] = useState(false);
 
   const totalDays = useMemo(() => {
     const s = new Date(startDate);
@@ -320,30 +272,13 @@ const ItinerarySection = () => {
       if (list.find(i => i.id === attr.id)) return prev;
       return { ...prev, [activeDay]: [...list, attr] };
     });
-    setAiOptimization(""); 
-  };
-
-  const handleAiOptimize = async () => {
-    const spots = tripDays[activeDay] || [];
-    if (spots.length === 0) return;
-    setOptimizing(true);
-    const spotNames = spots.map(s => s.name).join('、');
-    const prompt = `我在 ${currentActiveDate.toLocaleDateString()} 的行程包含了：${spotNames}。請作為專業導遊，幫我排序遊玩順序，並給予一個該天的交通與用餐的亮點建議。字數控制在 150 字內。`;
-    try {
-      const result = await fetchGemini(prompt);
-      setAiOptimization(result);
-    } catch {
-      setAiOptimization("AI 暫時休息中，請稍後再試。");
-    } finally {
-      setOptimizing(false);
-    }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-20 animate-fade-in text-left">
       <div className="grid lg:grid-cols-12 gap-16">
         <div className="lg:col-span-7">
-          <div className="mb-14 bg-white p-10 rounded-[3.5rem] border border-rose-100 shadow-sm border-l-[16px] border-l-rose-500">
+          <div className="mb-14 bg-white p-10 rounded-[3.5rem] border border-rose-100 shadow-sm border-l-[16px] border-l-rose-500 text-left">
             <h3 className="font-black text-4xl mb-8">2026 計畫起點</h3>
             <div className="grid grid-cols-2 gap-10 mb-8">
               <div className="space-y-3">
@@ -359,15 +294,15 @@ const ItinerarySection = () => {
               <div className={`p-8 rounded-[3rem] flex items-start gap-8 ${seasonalTip.color} bg-opacity-40 border border-current border-opacity-10 backdrop-blur-md`}>
                 <Sparkles className="w-10 h-10 shrink-0 animate-bounce text-rose-600" />
                 <div>
-                  <h4 className="font-black text-2xl mb-2 tracking-tight text-left text-inherit">Day {activeDay} 靈感 ({currentActiveDate.getMonth()+1}月)：</h4>
-                  <p className="text-lg font-bold opacity-80 leading-relaxed italic text-left text-inherit">「 {seasonalTip.description} 」</p>
+                  <h4 className="font-black text-2xl mb-2 tracking-tight text-left">Day {activeDay} 靈感 ({currentActiveDate.getMonth()+1}月)：</h4>
+                  <p className="text-lg font-bold opacity-80 leading-relaxed italic text-left">「 {seasonalTip.description} 」</p>
                 </div>
               </div>
             )}
           </div>
           
           <div className="mb-10 space-y-8">
-            <div className="relative flex items-center group overflow-hidden">
+            <div className="relative flex items-center group overflow-hidden text-left">
               <div className="absolute left-8 z-10 text-slate-300 group-focus-within:text-rose-500 transition-colors pointer-events-none">
                 <Search className="w-8 h-8" />
               </div>
@@ -413,12 +348,13 @@ const ItinerarySection = () => {
             </div>
           </div>
           
-          <div className="grid sm:grid-cols-2 gap-10 max-h-[800px] overflow-y-auto pr-6 custom-scroll">
+          <div className="grid sm:grid-cols-2 gap-10 max-h-[800px] overflow-y-auto pr-6 custom-scroll text-left">
             {filteredAttractions.map(a => (
-              <div key={a.id} className="bg-white p-6 rounded-[3rem] border border-slate-50 flex items-center gap-6 hover:shadow-2xl transition-all group relative text-left">
+              <div key={a.id} className="bg-white p-6 rounded-[3rem] border border-slate-50 flex items-center gap-6 hover:shadow-2xl transition-all group relative">
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-[1.5rem] overflow-hidden shrink-0 shadow-lg"><ImageWithFallback src={a.img} alt={a.name} type={a.type} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" /></div>
                 <div className="flex-1 min-w-0 pr-2">
                   <h4 className="font-black text-slate-900 text-lg md:text-xl mb-1 tracking-tight leading-snug break-words">{a.name}</h4>
+                  {/* 修正：紅色標籤顯示 城市 - 分類 */}
                   <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest truncate">{a.area} - {a.type}</p>
                 </div>
                 <button onClick={() => addToTrip(a)} className="bg-rose-500 text-white p-2.5 rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hover:rotate-180 transform translate-x-4 group-hover:translate-x-0 shrink-0"><Plus className="w-6 h-6" /></button>
@@ -428,16 +364,8 @@ const ItinerarySection = () => {
         </div>
         
         <div className="lg:col-span-5">
-          <div className="bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_-30px_rgba(0,0,0,0.12)] border border-slate-50 sticky top-28">
-            <div className="flex justify-between items-center mb-14 text-left">
-              <h3 className="text-4xl font-black flex items-center gap-6"><Sparkles className="w-12 h-12 text-rose-500" /> 探險筆記</h3>
-              {(tripDays[activeDay] || []).length > 1 && (
-                <button onClick={handleAiOptimize} disabled={optimizing} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50">
-                  {optimizing ? <Loader2 className="animate-spin w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-                  ✨ AI 智能優化
-                </button>
-              )}
-            </div>
+          <div className="bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_-30px_rgba(0,0,0,0.12)] border border-slate-50 sticky top-28 text-left">
+            <h3 className="text-4xl font-black mb-14 flex items-center gap-6"><Sparkles className="w-12 h-12 text-rose-500" /> 探險筆記</h3>
             
             <div className="flex flex-row gap-5 overflow-x-auto pb-8 mb-8 items-center min-h-[140px] scrollbar-custom-wide">
               {Array.from({ length: totalDays }).map((_, i) => {
@@ -457,12 +385,6 @@ const ItinerarySection = () => {
             </div>
             
             <div className="space-y-6 min-h-[400px] overflow-y-auto max-h-[550px] pr-2 custom-scroll text-left">
-              {aiOptimization && (
-                <div className="p-8 bg-gradient-to-br from-rose-50 to-pink-50 rounded-[3rem] border border-rose-100 animate-fade-in mb-8">
-                  <div className="flex items-center gap-3 mb-4 text-rose-500 font-black text-sm uppercase tracking-widest text-left"><Sparkles className="w-5 h-5" /> AI 行程大師建議</div>
-                  <p className="text-slate-700 text-base leading-relaxed font-bold italic text-left">「 {aiOptimization} 」</p>
-                </div>
-              )}
               {(tripDays[activeDay] || []).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-32 border-[10px] border-dashed border-slate-50 rounded-[4rem] text-slate-200">
                   <Navigation className="w-20 h-20 mb-8 opacity-5" />
@@ -470,7 +392,7 @@ const ItinerarySection = () => {
                 </div>
               ) : (
                 tripDays[activeDay].map((item, idx) => (
-                  <div key={`${item.id}-${idx}`} className="flex items-center gap-6 bg-slate-50/70 p-8 rounded-[2.5rem] border border-white hover:border-rose-200 transition-all group text-left">
+                  <div key={`${item.id}-${idx}`} className="flex items-center gap-6 bg-slate-50/70 p-8 rounded-[2.5rem] border border-white hover:border-rose-200 transition-all group">
                     <div className="w-14 h-14 rounded-[1.5rem] bg-white shadow-sm text-rose-500 flex items-center justify-center text-xl font-black shrink-0">{idx+1}</div>
                     <div className="flex-1 font-black text-2xl text-slate-800 tracking-tighter leading-none break-words">{item.name}</div>
                     <button onClick={() => setTripDays(p => ({...p, [activeDay]: p[activeDay].filter((_,i)=>i!==idx)}))} className="text-slate-300 hover:text-rose-500 transition-colors p-3 shrink-0"><Trash2 className="w-8 h-8" /></button>
